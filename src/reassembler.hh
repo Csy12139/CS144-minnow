@@ -9,7 +9,7 @@ class Reassembler
 {
 private:
   void _write_to_stream(Writer& output);
-  void _insert_to_buffer(uint64_t accept_begin, uint64_t accept_len, uint64_t first_index, std::string& data);
+  void _insert_to_buffer(uint64_t accept_begin, uint64_t len, uint64_t first_index, std::string& data);
   void _delete_overlapping(uint64_t index);
 protected:
   std::map<uint64_t, std::string> m_buf;
