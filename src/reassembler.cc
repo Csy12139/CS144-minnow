@@ -1,5 +1,4 @@
 #include "reassembler.hh"
-#include <iostream>
 
 using namespace std;
 
@@ -21,18 +20,14 @@ void Reassembler::_delete_overlapping( uint64_t index )
 {
   auto begin = m_buf.find( index );
 
-  if ( begin == m_buf.end() ) {
+  if ( begin == m_buf.end() )
     return;
-  }
 
   uint64_t end_index = begin->second.size() + begin->first;
-  begin++;
-  auto end = begin;
+  auto end = ++begin;
 
-  while ( ( end != m_buf.end() ) && ( end->first + end->second.size() <= end_index ) ) {
+  for (; end != m_buf.end() && end->first + end->second.size() <= end_index; ++end )
     m_bytes_pending -= end->second.size();
-    ++end;
-  }
 
   m_buf.erase( begin, end );
 }
@@ -41,9 +36,8 @@ void Reassembler::_insert_to_buffer( uint64_t accept_begin, uint64_t len, uint64
 {
   uint64_t accept_end = accept_begin + len;
 
-  if ( first_index >= accept_end ) {
+  if ( first_index >= accept_end )
     return;
-  }
 
   decltype( m_buf )::iterator iter;
 
@@ -55,10 +49,10 @@ void Reassembler::_insert_to_buffer( uint64_t accept_begin, uint64_t len, uint64
   if ( iter != m_buf.begin() ) {
     --iter;
     uint_fast64_t next_end = iter->first + iter->second.size();
-    clamped_end = next_end > end_index ? iter->first : end_index;
+    clamped_end = next_end >= end_index ? iter->first : end_index;
   }
 
-  // Clamp end of data
+  // Clamp begin of data
   uint64_t clamped_begin = accept_begin > first_index ? accept_begin : first_index;
   iter = m_buf.upper_bound( first_index );
 
@@ -69,9 +63,8 @@ void Reassembler::_insert_to_buffer( uint64_t accept_begin, uint64_t len, uint64
   }
 
   // return if no bytes need to store
-  if ( clamped_begin >= clamped_end ) {
+  if ( clamped_begin >= clamped_end )
     return;
-  }
 
   // Clamp the data
   data.erase( data.begin() + clamped_end - first_index, data.end() );
@@ -87,17 +80,15 @@ void Reassembler::_insert_to_buffer( uint64_t accept_begin, uint64_t len, uint64
 void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring, Writer& output )
 {
   // update last index
-  if ( is_last_substring ) {
+  if ( is_last_substring )
     m_stream_end = first_index + data.size();
-  }
 
   _insert_to_buffer( output.bytes_pushed(), output.available_capacity(), first_index, data );
   _write_to_stream( output );
 
   // try to close stream
-  if ( output.bytes_pushed() == m_stream_end && !output.is_closed() ) {
+  if ( output.bytes_pushed() == m_stream_end && !output.is_closed() )
     output.close();
-  }
 }
 
 uint64_t Reassembler::bytes_pending() const
