@@ -31,14 +31,10 @@ void ByteStream::RingBuffer::append( const std::string& data, uint64_t count )
   part_left = m_end + count > m_capacity ? m_capacity - m_end : count;
   part_right = m_end + count > m_capacity ? ( m_end + count ) % m_capacity : 0;
 
-  if ( part_left > 0 )
-    m_data.replace( m_end, part_left, data, 0, part_left );
+  m_data.replace( m_end, part_left, data, 0, part_left );
+  m_data.replace( 0, part_right, data, part_left, part_right );
 
   m_end = ( m_end + count ) % m_capacity;
-
-  if ( part_right > 0 )
-    m_data.replace( 0, part_right, data, part_left, part_right );
-
   m_size += count;
 }
 
