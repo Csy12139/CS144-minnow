@@ -7,18 +7,12 @@
 class TCPReceiver
 {
 protected:
-  enum TCORecriverState
-  {
-    LISTEN,
-    SYN_RCVD,
-    ESTB_CONN,
-    CLOSED,
-  };
-
-  TCORecriverState m_state {LISTEN};
-
   // recv ack
   Wrap32 m_recv_zero_point {0};
+
+  // recv flag
+  bool m_syn_rcvd {false};
+  bool m_fin_rcvd {false};
 
 public:
   /*
