@@ -56,10 +56,12 @@ void Reassembler::_insert_to_buffer( uint64_t accept_begin, uint64_t len, uint64
   uint64_t clamped_begin = accept_begin > first_index ? accept_begin : first_index;
   iter = m_buf.upper_bound( first_index );
 
-  if ( iter != m_buf.begin() ) {
+  if ( iter != m_buf.begin() )
     --iter;
-    uint64_t prev_end = iter->first + iter->second.size();
-    clamped_begin = prev_end > first_index ? prev_end : first_index;
+
+  if ( iter->first + iter->second.size() > clamped_begin ) {
+    for ( ; iter != m_buf.end() && iter->first <= clamped_begin; ++iter )
+      clamped_begin = iter->first + iter->second.size();
   }
 
   // return if no bytes need to store
@@ -69,13 +71,6 @@ void Reassembler::_insert_to_buffer( uint64_t accept_begin, uint64_t len, uint64
   // Clamp the data
   data.erase( data.begin() + clamped_end - first_index, data.end() );
   data.erase( data.begin(), data.begin() + clamped_begin - first_index );
-
-  // remove old
-  iter = m_buf.find( clamped_begin );
-
-  if ( iter != m_buf.end() ) {
-    m_bytes_pending -= iter->second.size();
-  }
 
   // add to buffer
   m_bytes_pending += data.size();
