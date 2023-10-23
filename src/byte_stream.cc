@@ -4,12 +4,37 @@
 
 using namespace std;
 
-ByteStream::ByteStream( uint64_t capacity ) : m_capacity( capacity ), m_buf() {}
+void ByteStream::RingBuffer::append(const std::string& data, uint64_t count)
+{
+  uint64_t part_left = 0, part_right = 0;
+
+  part_left = m_end + count > m_capacity ? m_capacity - m_end : count;
+  part_right = m_end + count > m_capacity ? (m_end + count) % m_capacity : 0;
+
+  if (part_left > 0)
+    m_data.replace(m_end, part_left, data, 0, part_left);
+  
+  m_end = (m_end + count) % m_capacity;
+  
+  if (part_right > 0)
+    m_data.replace(0, part_right, data, part_left, part_right);
+
+  m_size += count;
+}
+
+void ByteStream::RingBuffer::erase(uint64_t len)
+{
+  m_size -= len;
+  m_begin += len;
+  m_begin %= m_capacity;
+}
+
+ByteStream::ByteStream( uint64_t capacity ) : m_capacity( capacity ), m_buf(capacity) {}
 
 void Writer::push( const string &data )
 {
   uint64_t len = data.size() <= available_capacity() ? data.size() : available_capacity();
-  m_buf.append(data.begin(), data.begin() + len);
+  m_buf.append(data, len);
   m_bytes_pushed += len;
 }
 
@@ -40,7 +65,7 @@ uint64_t Writer::bytes_pushed() const
 
 string_view Reader::peek() const
 {
-  return string_view(m_buf);
+  return string_view(m_buf.data(), m_buf.available_size());
 }
 
 bool Reader::is_finished() const
@@ -56,7 +81,7 @@ bool Reader::has_error() const
 void Reader::pop( uint64_t len )
 {
   len = len > bytes_buffered() ? bytes_buffered() : len;
-  m_buf.erase(0, len);
+  m_buf.erase(len);
   m_bytes_popped += len;
 }
 

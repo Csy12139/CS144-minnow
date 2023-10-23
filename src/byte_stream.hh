@@ -1,6 +1,5 @@
 #pragma once
 
-#include <queue>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -10,9 +9,27 @@ class Writer;
 
 class ByteStream
 {
+private:
+  class RingBuffer
+  {
+  protected:
+    std::string m_data {};
+    uint64_t m_capacity {};
+    uint64_t m_begin {};
+    uint64_t m_end {};
+    uint64_t m_size {};
+  public:
+    RingBuffer(uint64_t capacity): m_capacity(capacity) { m_data.resize(capacity); }
+    uint64_t size() const { return m_size; }
+    uint64_t available_size() const { return m_size == m_capacity || m_end < m_begin ? m_capacity - m_begin : m_end - m_begin;}
+    void append(const std::string& data, uint64_t count);
+    void erase(uint64_t len);
+    const char *data() const { return m_data.data() + m_begin; }
+      
+  };
 protected:
   uint64_t m_capacity = 0;
-  std::string m_buf;
+  RingBuffer m_buf;
   uint64_t m_bytes_popped = 0;
   uint64_t m_bytes_pushed = 0;
 
