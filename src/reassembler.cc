@@ -26,7 +26,7 @@ void Reassembler::_delete_overlapping( uint64_t index )
   uint64_t end_index = begin->second.size() + begin->first;
   auto end = ++begin;
 
-  for (; end != m_buf.end() && end->first + end->second.size() <= end_index; ++end )
+  for ( ; end != m_buf.end() && end->first + end->second.size() <= end_index; ++end )
     m_bytes_pending -= end->second.size();
 
   m_buf.erase( begin, end );
@@ -69,6 +69,13 @@ void Reassembler::_insert_to_buffer( uint64_t accept_begin, uint64_t len, uint64
   // Clamp the data
   data.erase( data.begin() + clamped_end - first_index, data.end() );
   data.erase( data.begin(), data.begin() + clamped_begin - first_index );
+
+  // remove old
+  iter = m_buf.find( clamped_begin );
+
+  if ( iter != m_buf.end() ) {
+    m_bytes_pending -= iter->second.size();
+  }
 
   // add to buffer
   m_bytes_pending += data.size();
