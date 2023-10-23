@@ -19,12 +19,12 @@ private:
     uint64_t m_end {};
     uint64_t m_size {};
   public:
-    RingBuffer(uint64_t capacity): m_capacity(capacity) { m_data.resize(capacity); }
-    uint64_t size() const { return m_size; }
-    uint64_t available_size() const { return m_size == m_capacity || m_end < m_begin ? m_capacity - m_begin : m_end - m_begin;}
+    RingBuffer(uint64_t capacity);
+    uint64_t size() const;
+    uint64_t available_size() const;
     void append(const std::string& data, uint64_t count);
-    void erase(uint64_t len);
-    const char *data() const { return m_data.data() + m_begin; }
+    void pop(uint64_t count);
+    const char *data() const;
       
   };
 protected:
