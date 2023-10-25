@@ -53,8 +53,8 @@ private:
   Wrap32 m_isn_ { 0 };
   RetransmissionTimeout m_RTO_ms_ {0};
   uint64_t m_consecutive_retransmissions {};
-  uint64_t m_window_left {};
-  uint64_t m_window_right {};
+  uint64_t m_window_left {0};
+  uint64_t m_window_right {1};  // for syn
 
   uint64_t get_absolute_seqno() const;
   void push_message( std::string payload, bool syn = false, bool fin = false );
