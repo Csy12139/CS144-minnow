@@ -41,6 +41,68 @@ void NetworkInterface::push_arp_request(uint32_t ipv4_numeric)
   send_queue.push(frame); 
 }
 
+void NetworkInterface::push_arp_reply(uint32_t ipv4_numeric, const EthernetAddress& dst)
+{
+  ARPMessage message;
+  message.opcode = ARPMessage::OPCODE_REPLY;
+  message.sender_ethernet_address = ethernet_address_;
+  message.sender_ip_address = ip_address_.ipv4_numeric();
+  message.target_ip_address = ipv4_numeric;
+  message.target_ethernet_address = ethernet_address_;
+
+  // maybe std::move
+  vector<Buffer> payload = serialize(message);
+  EthernetFrame frame = create_ethernet_frame(EthernetHeader::TYPE_ARP, payload, dst);
+  send_queue.push(frame); 
+}
+
+bool NetworkInterface::is_equal(const EthernetAddress& lhs, const EthernetAddress& rhs) const
+{
+  for ( uint64_t i = 0; i < lhs.size(); ++i)
+    if (lhs[i] != rhs[i]) return false;
+
+  return true;
+}
+
+void NetworkInterface::handle_arp_reply(const EthernetFrame& frame)
+{
+  ARPMessage message;
+
+  if (!parse(message, frame.payload))
+    return;
+
+  if (message.opcode == ARPMessage::OPCODE_REPLY)
+  {
+    uint32_t ipv4_numeric = message.target_ip_address;
+    EthernetAddress& ethernet_address = message.target_ethernet_address;
+
+    address_expire_timers[ipv4_numeric] = timer + NetworkInterface::ADDRESS_CACHE_TIMEOUT_MS;
+    address_cache[ipv4_numeric] = ethernet_address;
+
+    if (datagram_cache.contains(ipv4_numeric))
+    {
+      queue<InternetDatagram>& cache_queue = datagram_cache[ipv4_numeric];
+
+      while (!cache_queue.empty())
+      {
+        push_datagram(cache_queue.front(), ethernet_address);
+        cache_queue.pop();
+      }
+
+      datagram_cache.erase(ipv4_numeric); 
+    }
+  }
+  else if (message.opcode == ARPMessage::OPCODE_REQUEST)
+  {
+    uint32_t src_ipv4_numeric = message.sender_ip_address;
+    uint32_t target_ipv4_numeric = message.target_ip_address;
+
+    if (address_cache.contains(target_ipv4_numeric) && address_cache.contains(src_ipv4_numeric))
+      push_arp_reply(src_ipv4_numeric, message.sender_ethernet_address);
+  }
+
+}
+
 // ethernet_address: Ethernet (what ARP calls "hardware") address of the interface
 // ip_address: IP (what ARP calls "protocol") address of the interface
 NetworkInterface::NetworkInterface( const EthernetAddress& ethernet_address, const Address& ip_address )
@@ -81,7 +143,28 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 // frame: the incoming Ethernet frame
 optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& frame )
 {
-  (void)frame;
+
+  if ( !is_equal( frame.header.dst, ethernet_address_ ) && !is_equal( frame.header.dst, ETHERNET_BROADCAST ) )
+    return;
+
+  switch ( frame.header.type ) {
+    case EthernetHeader::TYPE_IPv4: {
+      InternetDatagram dgram;
+
+      if ( parse( dgram, frame.payload ) )
+        return dgram;
+      else
+        return {};
+    } break;
+
+    case EthernetHeader::TYPE_ARP: {
+      handle_arp_reply( frame );
+    } break;
+
+    default:
+      break;
+  }
+
   return {};
 }
 
@@ -91,23 +174,28 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
   timer += ms_since_last_tick;
   
   // expire address map cache
-  while (!address_expire_timers.empty() && timer >= address_expire_timers.begin()->first)
+  for (auto iter = address_expire_timers.begin(); iter != address_expire_timers.end();)
   {
-    auto iter = address_cache.find(address_expire_timers.begin()->second);
+    if (timer < iter->second)
+    {
+      ++iter;
+      continue;
+    }
 
-    if (iter != address_cache.end())
-      address_cache.erase(iter);
-
-    address_expire_timers.erase(address_expire_timers.begin());
+    address_cache.erase(iter->first);
+    iter = address_expire_timers.erase(iter);
   }
 
   // expire ARP requests
   for (auto iter = arp_request_expire_timers.begin(); iter != arp_request_expire_timers.end();)
   {
-    if (timer >= iter->second)
-      iter = arp_request_expire_timers.erase(iter);
-    else
+    if (timer < iter->second)
+    {
       ++iter;
+      continue;
+    }
+
+    iter = arp_request_expire_timers.erase(iter);
   }
 }
 

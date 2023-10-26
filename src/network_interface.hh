@@ -53,7 +53,7 @@ private:
   std::unordered_map<uint32_t, EthernetAddress> address_cache {};
 
   // expire_time -> ip_address(numeric)
-  std::map<uint64_t, uint32_t> address_expire_timers {};
+  std::map<uint32_t, uint64_t> address_expire_timers {};
 
   // ip_address(numeric) -> expire_time
   std::unordered_map<uint32_t, uint64_t> arp_request_expire_timers {};
@@ -68,11 +68,18 @@ private:
   // internal helper to create a ethernet frame
   EthernetFrame create_ethernet_frame(uint16_t type, std::vector<Buffer> payload, const EthernetAddress& dst) const;
 
+  // internal helper to contrast EthernetAddress
+  bool is_equal(const EthernetAddress& lhs, const EthernetAddress& rhs) const;
+
   // push Internet datagram to the send queue
   void push_datagram(const InternetDatagram& dgram, const EthernetAddress& dst);
 
-  // push ARP request to the send queue
+  // push ARP message to the send queue
   void push_arp_request(uint32_t ipv4_numeric);
+  void push_arp_reply(uint32_t ipv4_numeric, const EthernetAddress& dst);
+
+  // handlers
+  void handle_arp_reply(const EthernetFrame& frame);
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
