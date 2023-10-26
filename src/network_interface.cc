@@ -68,8 +68,12 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
   {
     if (!arp_request_expire_timers.contains(ipv4_numeric) || timer > arp_request_expire_timers[ipv4_numeric])
     {
-      push_arp_request(next_hop.ipv4_numeric());
-      datagram_cache.push(dgram);
+      push_arp_request(ipv4_numeric);
+
+      if (!datagram_cache.contains(ipv4_numeric))
+        datagram_cache[ipv4_numeric] = queue<InternetDatagram> {};
+
+      datagram_cache[ipv4_numeric].push(dgram);
     }
   }
 }

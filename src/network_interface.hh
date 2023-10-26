@@ -58,8 +58,8 @@ private:
   // ip_address(numeric) -> expire_time
   std::unordered_map<uint32_t, uint64_t> arp_request_expire_timers {};
 
-  // datagram cache waiting for ARP reply. ip_address(numeric) -> InternetDatagram
-  std::queue<InternetDatagram> datagram_cache {};
+  // datagram cache waiting for ARP reply. ip_address(numeric) -> queue<InternetDatagram>
+  std::unordered_map<uint32_t, std::queue<InternetDatagram>> datagram_cache {};
 
   // send queue for EthernetFrame
   std::queue<EthernetFrame> send_queue {};
