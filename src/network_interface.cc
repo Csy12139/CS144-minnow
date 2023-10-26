@@ -41,18 +41,20 @@ void NetworkInterface::push_arp_request(uint32_t ipv4_numeric)
   send_queue.push(frame); 
 }
 
-void NetworkInterface::push_arp_reply(uint32_t query_ipv4, const EthernetAddress& query_ethernet, const EthernetAddress& dst)
+// replying be like the host which ARP request is searching for(meaning the result should be set to "sender" fields)
+// then, the network could cache sender fields eigher REPLY or REQUEST ARP message
+void NetworkInterface::push_arp_reply(uint32_t sender_ipv4, const EthernetAddress& sender_ethernet, uint32_t target_ipv4, const EthernetAddress& target_ethernet)
 {
   ARPMessage message;
   message.opcode = ARPMessage::OPCODE_REPLY;
-  message.sender_ethernet_address = ethernet_address_;
-  message.sender_ip_address = ip_address_.ipv4_numeric();
-  message.target_ip_address = query_ipv4;
-  message.target_ethernet_address = query_ethernet;
+  message.sender_ip_address = sender_ipv4;
+  message.sender_ethernet_address = sender_ethernet;
+  message.target_ip_address = target_ipv4;
+  message.target_ethernet_address = target_ethernet;
 
   // maybe std::move
   vector<Buffer> payload = serialize(message);
-  EthernetFrame frame = create_ethernet_frame(EthernetHeader::TYPE_ARP, payload, dst);
+  EthernetFrame frame = create_ethernet_frame(EthernetHeader::TYPE_ARP, payload, target_ethernet);
   send_queue.push(frame); 
 }
 
@@ -64,43 +66,39 @@ bool NetworkInterface::is_equal(const EthernetAddress& lhs, const EthernetAddres
   return true;
 }
 
-void NetworkInterface::handle_arp_reply(const EthernetFrame& frame)
+void NetworkInterface::handle_arp_reply( const EthernetFrame& frame )
 {
   ARPMessage message;
 
-  if (!parse(message, frame.payload))
+  if ( !parse( message, frame.payload ) )
     return;
 
-  if (message.opcode == ARPMessage::OPCODE_REPLY)
-  {
-    uint32_t ipv4_numeric = message.target_ip_address;
-    EthernetAddress& ethernet_address = message.target_ethernet_address;
+  // cache address either REPLY or REQUEST ARP message
+  uint32_t sedner_ipv4 = message.sender_ip_address;
+  EthernetAddress& sender_ethernet = message.sender_ethernet_address;
 
-    address_expire_timers[ipv4_numeric] = timer + NetworkInterface::ADDRESS_CACHE_TIMEOUT_MS;
-    address_cache[ipv4_numeric] = ethernet_address;
+  address_expire_timers[sedner_ipv4] = timer + NetworkInterface::ADDRESS_CACHE_TIMEOUT_MS;
+  address_cache[sedner_ipv4] = sender_ethernet;
 
-    if (datagram_cache.contains(ipv4_numeric))
-    {
-      queue<InternetDatagram>& cache_queue = datagram_cache[ipv4_numeric];
+  if ( datagram_cache.contains( sedner_ipv4 ) ) {
+    queue<InternetDatagram>& cache_queue = datagram_cache[sedner_ipv4];
 
-      while (!cache_queue.empty())
-      {
-        push_datagram(cache_queue.front(), ethernet_address);
-        cache_queue.pop();
-      }
-
-      datagram_cache.erase(ipv4_numeric); 
+    while ( !cache_queue.empty() ) {
+      push_datagram( cache_queue.front(), sender_ethernet );
+      cache_queue.pop();
     }
-  }
-  else if (message.opcode == ARPMessage::OPCODE_REQUEST)
-  {
-    uint32_t src_ipv4_numeric = message.sender_ip_address;
-    uint32_t target_ipv4_numeric = message.target_ip_address;
 
-    if (address_cache.contains(target_ipv4_numeric))
-      push_arp_reply(src_ipv4_numeric, address_cache[target_ipv4_numeric], message.sender_ethernet_address);
+    datagram_cache.erase( sedner_ipv4 );
   }
 
+  if ( message.opcode == ARPMessage::OPCODE_REQUEST ) {
+    uint32_t target_ipv4 = message.target_ip_address;
+
+    if ( address_cache.contains( target_ipv4 ) )
+      push_arp_reply( target_ipv4, address_cache[target_ipv4], sedner_ipv4, sender_ethernet );
+    else if ( target_ipv4 == ip_address_.ipv4_numeric() )
+      push_arp_reply( target_ipv4, ethernet_address_, sedner_ipv4, sender_ethernet );
+  }
 }
 
 // ethernet_address: Ethernet (what ARP calls "hardware") address of the interface

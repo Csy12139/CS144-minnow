@@ -76,7 +76,7 @@ private:
 
   // push ARP message to the send queue
   void push_arp_request(uint32_t ipv4_numeric);
-  void push_arp_reply(uint32_t query_ipv4, const EthernetAddress& query_ethernet, const EthernetAddress& dst);
+  void push_arp_reply(uint32_t sender_ipv4, const EthernetAddress& sender_ethernet, uint32_t target_ipv4, const EthernetAddress& target_ethernet);
 
   // handlers
   void handle_arp_reply(const EthernetFrame& frame);
