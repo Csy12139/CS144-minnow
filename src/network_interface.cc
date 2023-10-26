@@ -85,7 +85,7 @@ void NetworkInterface::handle_arp_reply( const EthernetFrame& frame )
     queue<InternetDatagram>& cache_queue = datagram_cache[sedner_ipv4];
 
     while ( !cache_queue.empty() ) {
-      push_datagram( cache_queue.front(), sender_ethernet );
+      push_datagram( std::move(cache_queue.front()), sender_ethernet );
       cache_queue.pop();
     }
 
