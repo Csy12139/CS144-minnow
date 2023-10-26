@@ -21,12 +21,13 @@ uint64_t ByteStream::RingBuffer::bytes_pushed() const
 
 const char* ByteStream::RingBuffer::data() const
 {
-  return m_data.data() + m_begin;
+  return &m_data[m_begin];
 }
 
 void ByteStream::RingBuffer::push( const std::string& data, uint64_t count )
 {
-  uint64_t part_left = 0, part_right = 0;
+  uint64_t part_left = 0;
+  uint64_t part_right = 0;
 
   part_left = m_end + count > m_capacity ? m_capacity - m_end : count;
   part_right = m_end + count > m_capacity ? ( m_end + count ) % m_capacity : 0;
@@ -81,7 +82,7 @@ uint64_t Writer::bytes_pushed() const
 
 string_view Reader::peek() const
 {
-  return string_view( m_buf.data(), m_buf.bytes_pushed() );
+  return { m_buf.data(), m_buf.bytes_pushed() };
 }
 
 bool Reader::is_finished() const

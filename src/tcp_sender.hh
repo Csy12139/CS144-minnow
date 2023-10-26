@@ -20,7 +20,7 @@ public:
     SUCCESSFUL_RECEIPT,
   };
 
-  RetransmissionTimeout( uint64_t initial_RTO_ms );
+  explicit RetransmissionTimeout( uint64_t initial_RTO_ms );
   uint64_t value() const { return m_value; }
   void set_timeout( RestransmissionEvent event );
 };

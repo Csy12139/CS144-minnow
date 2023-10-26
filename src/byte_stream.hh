@@ -20,11 +20,11 @@ private:
     uint64_t m_size {};
 
   public:
-    RingBuffer( uint64_t capacity );
+    explicit RingBuffer( uint64_t capacity );
     uint64_t size() const;
     uint64_t bytes_pushed() const;
     void push( const std::string& data, uint64_t count );
-    void pop( uint64_t count );
+    void pop( uint64_t len );
     const char* data() const;
   };
 
