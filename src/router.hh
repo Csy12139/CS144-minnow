@@ -4,6 +4,9 @@
 
 #include <optional>
 #include <queue>
+#include <utility>
+#include <vector>
+#include <unordered_map>
 
 // A wrapper for NetworkInterface that makes the host-side
 // interface asynchronous: instead of returning received datagrams
@@ -52,8 +55,25 @@ public:
 // performs longest-prefix-match routing between them.
 class Router
 {
+  class RouteTable
+  {
+    // concat the route-prefix and prefix-lenth into 64-bit -> interface num
+    std::unordered_map<uint64_t, size_t> entries {};
+    std::unordered_map<uint64_t, uint32_t> next_hops {};
+
+    static bool match( uint32_t ipv4_address, uint64_t concat );
+
+  public:
+    void insert(uint64_t concat, size_t num, const std::optional<Address>& next_hop);
+    // look up the longest-prefix-match interface num. output by param interface_num if return true 
+    bool look_up( uint32_t ipv4_address, size_t& interface_num ) const;
+  };
+
   // The router's collection of network interfaces
   std::vector<AsyncNetworkInterface> interfaces_ {};
+
+  // Route table
+  RouteTable rout_table_ {};
 
 public:
   // Add an interface to the router

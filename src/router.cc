@@ -5,6 +5,45 @@
 
 using namespace std;
 
+bool Router::RouteTable::match( uint32_t ipv4_address, uint64_t concat )
+{
+  uint64_t route_prefix = concat >> 32;
+
+  // a correct prefix_length must be <= 32. This ensure it's safe to shift 64-bit uint of any valid prefix_length
+  // bits
+  uint64_t prefix_length = concat & 0x3F;
+  uint64_t route_prefix_mask = 0xFFFFFFFF - ( ( (uint64_t)1 << ( 32 - prefix_length ) ) - 1 );
+
+  return ( route_prefix & route_prefix_mask ) == ( ipv4_address & route_prefix_mask );
+}
+
+void Router::RouteTable::insert( uint64_t concat, size_t num, const optional<Address>& next_hop )
+{
+  entries[concat] = num;
+
+  if ( next_hop.has_value() ) {
+    next_hops[concat] = next_hop.value().ipv4_numeric();
+  }
+}
+
+bool Router::RouteTable::look_up( uint32_t ipv4_address, size_t& interface_num ) const
+{
+  uint8_t longest_prefix_length = 0;
+  size_t num = 0;
+  uint64_t prefix_length_mask = 0xFFFFFFFF;
+
+  for ( auto pair : entries ) {
+    if ( match( ipv4_address, pair.first ) && ( pair.first & prefix_length_mask ) > longest_prefix_length ) {
+      num = pair.second;
+      longest_prefix_length = pair.first & prefix_length_mask;
+    }
+  }
+
+  interface_num = longest_prefix_length > 0 ? num : interface_num;
+
+  return longest_prefix_length > 0;
+}
+
 // route_prefix: The "up-to-32-bit" IPv4 address prefix to match the datagram's destination address against
 // prefix_length: For this route to be applicable, how many high-order (most-significant) bits of
 //    the route_prefix will need to match the corresponding bits of the datagram's destination address?
@@ -20,10 +59,10 @@ void Router::add_route( const uint32_t route_prefix,
        << static_cast<int>( prefix_length ) << " => " << ( next_hop.has_value() ? next_hop->ip() : "(direct)" )
        << " on interface " << interface_num << "\n";
 
-  (void)route_prefix;
-  (void)prefix_length;
-  (void)next_hop;
-  (void)interface_num;
+  uint64_t concat = ( static_cast<uint64_t>( route_prefix ) << 32 ) + static_cast<uint64_t>( prefix_length );
+  rout_table_.insert(concat, interface_num, next_hop);
 }
 
-void Router::route() {}
+void Router::route() {
+
+}
