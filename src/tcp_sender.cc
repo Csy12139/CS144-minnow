@@ -107,7 +107,7 @@ void TCPSender::push( Reader& outbound_stream )
 
   string payload;
 
-  uint64_t window_right = m_window_left == m_window_right ? m_window_right + 1 : m_window_right;
+  uint64_t window_right = m_window_size == 0 ? m_window_left + 1 : m_window_left + m_window_size;
 
   while (!m_fin_pushed && get_absolute_seqno() + TCPConfig::MAX_PAYLOAD_SIZE <= window_right) {
     read( outbound_stream, TCPConfig::MAX_PAYLOAD_SIZE, payload );
@@ -171,7 +171,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
       m_retransmission_timer_.stop();
   }
 
-  m_window_right = m_window_left + msg.window_size;
+  m_window_size = msg.window_size;
 }
 
 void TCPSender::tick( const uint64_t ms_since_last_tick )
@@ -183,7 +183,7 @@ void TCPSender::tick( const uint64_t ms_since_last_tick )
     // resend the earliest outstanding message
     m_send_queue_.push( m_outstanding_messages_.begin()->second );
 
-    if ( m_window_right - m_window_left > 0 ) {
+    if ( m_window_size > 0 ) {
       m_RTO_ms_.set_timeout( RetransmissionTimeout::TIMEOUT );
       m_consecutive_retransmissions++;
     }
