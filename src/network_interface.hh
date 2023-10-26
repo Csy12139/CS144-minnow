@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <queue>
+#include <vector>
 #include <optional>
 #include <map>
 #include <unordered_map>
@@ -57,11 +58,21 @@ private:
   // ip_address(numeric) -> expire_time
   std::unordered_map<uint32_t, uint64_t> arp_request_expire_timers {};
 
+  // datagram cache waiting for ARP reply. ip_address(numeric) -> InternetDatagram
+  std::queue<InternetDatagram> datagram_cache {};
+
   // send queue for EthernetFrame
   std::queue<EthernetFrame> send_queue {};
 
 private:
+  // internal helper to create a ethernet frame
+  EthernetFrame create_ethernet_frame(uint16_t type, std::vector<Buffer> payload, const EthernetAddress& dst) const;
 
+  // push Internet datagram to the send queue
+  void push_datagram(const InternetDatagram& dgram, const EthernetAddress& dst);
+
+  // push ARP request to the send queue
+  void push_arp_request(uint32_t ipv4_numeric);
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
