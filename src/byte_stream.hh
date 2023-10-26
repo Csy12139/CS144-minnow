@@ -21,8 +21,8 @@ private:
   public:
     RingBuffer(uint64_t capacity);
     uint64_t size() const;
-    uint64_t available_size() const;
-    void append(const std::string& data, uint64_t count);
+    uint64_t bytes_pushed() const;
+    void push(const std::string& data, uint64_t count);
     void pop(uint64_t count);
     const char *data() const;
       
