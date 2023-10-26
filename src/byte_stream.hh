@@ -18,15 +18,16 @@ private:
     uint64_t m_begin {};
     uint64_t m_end {};
     uint64_t m_size {};
+
   public:
-    RingBuffer(uint64_t capacity);
+    RingBuffer( uint64_t capacity );
     uint64_t size() const;
     uint64_t bytes_pushed() const;
-    void push(const std::string& data, uint64_t count);
-    void pop(uint64_t count);
-    const char *data() const;
-      
+    void push( const std::string& data, uint64_t count );
+    void pop( uint64_t count );
+    const char* data() const;
   };
+
 protected:
   uint64_t m_capacity = 0;
   RingBuffer m_buf;
@@ -50,7 +51,7 @@ public:
 class Writer : public ByteStream
 {
 public:
-  void push( const std::string & data ); // Push data to stream, but only as much as available capacity allows.
+  void push( const std::string& data ); // Push data to stream, but only as much as available capacity allows.
 
   void close();     // Signal that the stream has reached its ending. Nothing more will be written.
   void set_error(); // Signal that the stream suffered an error.

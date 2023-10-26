@@ -2,19 +2,21 @@
 
 #include "byte_stream.hh"
 
-#include <string>
 #include <map>
+#include <string>
 
 class Reassembler
 {
 private:
-  void _write_to_stream(Writer& output);
-  void _insert_to_buffer(uint64_t accept_begin, uint64_t len, uint64_t first_index, std::string& data);
-  void _delete_overlapping(uint64_t index);
+  void _write_to_stream( Writer& output );
+  void _insert_to_buffer( uint64_t accept_begin, uint64_t len, uint64_t first_index, std::string& data );
+  void _delete_overlapping( uint64_t index );
+
 protected:
   std::map<uint64_t, std::string> m_buf;
-  uint64_t m_bytes_pending = 0; 
+  uint64_t m_bytes_pending = 0;
   uint64_t m_stream_end = UINT64_MAX;
+
 public:
   /*
    * Insert a new substring to be reassembled into a ByteStream.

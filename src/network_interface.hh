@@ -41,7 +41,9 @@ private:
     EthernetAddress ethernet_address {};
     uint64_t expire_time_ms {};
     AddressCache() = default;
-    AddressCache(const EthernetAddress& ethernet_addr, uint64_t time_ms): ethernet_address(ethernet_addr), expire_time_ms(time_ms) {}
+    AddressCache( const EthernetAddress& ethernet_addr, uint64_t time_ms )
+      : ethernet_address( ethernet_addr ), expire_time_ms( time_ms )
+    {}
   };
 
   // Ethernet (known as hardware, network-access, or link-layer) address of the interface

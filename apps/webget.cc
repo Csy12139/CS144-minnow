@@ -16,18 +16,16 @@ void get_URL( const string& host, const string& path )
   request += "\r\n";
 
   TCPSocket sock;
-  sock.connect(Address(host, "http"));
+  sock.connect( Address( host, "http" ) );
 
   auto iter = request.begin();
-  while ( iter < request.end() )
-  {
-    iter += sock.write(basic_string_view(iter, request.end()));
+  while ( iter < request.end() ) {
+    iter += sock.write( basic_string_view( iter, request.end() ) );
   }
 
-  sock.write(request);
-  while(!sock.eof())
-  {
-    sock.read(buf);
+  sock.write( request );
+  while ( !sock.eof() ) {
+    sock.read( buf );
     cout << buf;
   }
 }

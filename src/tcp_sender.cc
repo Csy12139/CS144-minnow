@@ -21,7 +21,7 @@ void RetransmissionTimer::stop()
 {
   m_running = false;
   m_timeout = UINT64_MAX;
-  m_timer = 0; 
+  m_timer = 0;
 }
 
 RetransmissionTimeout::RetransmissionTimeout( uint64_t initial_RTO_ms )
@@ -109,25 +109,24 @@ void TCPSender::push( Reader& outbound_stream )
 
   uint64_t window_right = m_window_size == 0 ? m_window_left + 1 : m_window_left + m_window_size;
 
-  while (!m_fin_pushed && get_absolute_seqno() + TCPConfig::MAX_PAYLOAD_SIZE <= window_right) {
+  while ( !m_fin_pushed && get_absolute_seqno() + TCPConfig::MAX_PAYLOAD_SIZE <= window_right ) {
     read( outbound_stream, TCPConfig::MAX_PAYLOAD_SIZE, payload );
     bool is_fin_msg = payload.size() + get_absolute_seqno() < window_right && outbound_stream.is_finished();
 
-    if (payload.empty() && !is_fin_msg)
+    if ( payload.empty() && !is_fin_msg )
       break;
-    
+
     m_fin_pushed = m_fin_pushed || is_fin_msg;
-    push_message( std::move( payload ) , false, is_fin_msg);
+    push_message( std::move( payload ), false, is_fin_msg );
   }
 
   if ( !m_fin_pushed && get_absolute_seqno() < window_right ) {
     read( outbound_stream, window_right - get_absolute_seqno(), payload );
     bool is_fin_msg = payload.size() + get_absolute_seqno() < window_right && outbound_stream.is_finished();
 
-    if (!payload.empty() || is_fin_msg)
-    {
+    if ( !payload.empty() || is_fin_msg ) {
       m_fin_pushed = m_fin_pushed || is_fin_msg;
-      push_message( std::move( payload ) , false, is_fin_msg);
+      push_message( std::move( payload ), false, is_fin_msg );
     }
   }
 }
@@ -152,7 +151,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
     uint64_t wait_for_ackno
       = m_outstanding_messages_.begin()->first + m_outstanding_messages_.begin()->second.sequence_length();
 
-    if ( absolute_ackno < wait_for_ackno || absolute_ackno > get_absolute_seqno())
+    if ( absolute_ackno < wait_for_ackno || absolute_ackno > get_absolute_seqno() )
       break;
 
     // sucessful receipt
