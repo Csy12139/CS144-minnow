@@ -41,14 +41,14 @@ void NetworkInterface::push_arp_request(uint32_t ipv4_numeric)
   send_queue.push(frame); 
 }
 
-void NetworkInterface::push_arp_reply(uint32_t ipv4_numeric, const EthernetAddress& dst)
+void NetworkInterface::push_arp_reply(uint32_t query_ipv4, const EthernetAddress& query_ethernet, const EthernetAddress& dst)
 {
   ARPMessage message;
   message.opcode = ARPMessage::OPCODE_REPLY;
   message.sender_ethernet_address = ethernet_address_;
   message.sender_ip_address = ip_address_.ipv4_numeric();
-  message.target_ip_address = ipv4_numeric;
-  message.target_ethernet_address = ethernet_address_;
+  message.target_ip_address = query_ipv4;
+  message.target_ethernet_address = query_ethernet;
 
   // maybe std::move
   vector<Buffer> payload = serialize(message);
@@ -97,8 +97,8 @@ void NetworkInterface::handle_arp_reply(const EthernetFrame& frame)
     uint32_t src_ipv4_numeric = message.sender_ip_address;
     uint32_t target_ipv4_numeric = message.target_ip_address;
 
-    if (address_cache.contains(target_ipv4_numeric) && address_cache.contains(src_ipv4_numeric))
-      push_arp_reply(src_ipv4_numeric, message.sender_ethernet_address);
+    if (address_cache.contains(target_ipv4_numeric))
+      push_arp_reply(src_ipv4_numeric, address_cache[target_ipv4_numeric], message.sender_ethernet_address);
   }
 
 }
@@ -145,7 +145,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& fr
 {
 
   if ( !is_equal( frame.header.dst, ethernet_address_ ) && !is_equal( frame.header.dst, ETHERNET_BROADCAST ) )
-    return;
+    return {};
 
   switch ( frame.header.type ) {
     case EthernetHeader::TYPE_IPv4: {
