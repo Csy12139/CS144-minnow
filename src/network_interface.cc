@@ -9,9 +9,8 @@ EthernetFrame NetworkInterface::create_ethernet_frame( uint16_t type,
                                                        std::vector<Buffer> payload,
                                                        const EthernetAddress& dst ) const
 {
-  // mayebe std::move
   EthernetFrame frame;
-  frame.payload = payload;
+  frame.payload = std::move(payload);
   frame.header.type = type;
   frame.header.dst = dst;
   frame.header.src = ethernet_address_;
@@ -21,9 +20,8 @@ EthernetFrame NetworkInterface::create_ethernet_frame( uint16_t type,
 
 void NetworkInterface::push_datagram( const InternetDatagram& dgram, const EthernetAddress& dst )
 {
-  // mayebe std::move
   vector<Buffer> payload = serialize( dgram );
-  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_IPv4, payload, dst );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_IPv4, std::move(payload), dst );
   send_queue.push( frame );
 }
 
@@ -35,12 +33,11 @@ void NetworkInterface::push_arp_request( uint32_t ipv4_numeric )
   message.sender_ip_address = ip_address_.ipv4_numeric();
   message.target_ip_address = ipv4_numeric;
 
-  // maybe std::move
   vector<Buffer> payload = serialize( message );
-  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, payload, ETHERNET_BROADCAST );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, std::move(payload), ETHERNET_BROADCAST );
 
   arp_request_expire_timers[ipv4_numeric] = timer + NetworkInterface::ARP_REQUEST_TIMEOUT_MS;
-  send_queue.push( frame );
+  send_queue.push( std::move(frame) );
 }
 
 // replying be like the host which ARP request is searching for(meaning the result should be set to "sender" fields)
@@ -57,10 +54,9 @@ void NetworkInterface::push_arp_reply( uint32_t sender_ipv4,
   message.target_ip_address = target_ipv4;
   message.target_ethernet_address = target_ethernet;
 
-  // maybe std::move
   vector<Buffer> payload = serialize( message );
-  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, payload, target_ethernet );
-  send_queue.push( frame );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, std::move(payload), target_ethernet );
+  send_queue.push( std::move(frame) );
 }
 
 bool NetworkInterface::is_equal( const EthernetAddress& lhs, const EthernetAddress& rhs ) const
