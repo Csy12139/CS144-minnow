@@ -5,7 +5,9 @@
 
 using namespace std;
 
-EthernetFrame NetworkInterface::create_ethernet_frame(uint16_t type, std::vector<Buffer> payload, const EthernetAddress& dst) const
+EthernetFrame NetworkInterface::create_ethernet_frame( uint16_t type,
+                                                       std::vector<Buffer> payload,
+                                                       const EthernetAddress& dst ) const
 {
   // mayebe std::move
   EthernetFrame frame;
@@ -17,15 +19,15 @@ EthernetFrame NetworkInterface::create_ethernet_frame(uint16_t type, std::vector
   return frame;
 }
 
-void NetworkInterface::push_datagram(const InternetDatagram& dgram, const EthernetAddress& dst)
+void NetworkInterface::push_datagram( const InternetDatagram& dgram, const EthernetAddress& dst )
 {
   // mayebe std::move
-  vector<Buffer> payload = serialize(dgram);
-  EthernetFrame frame = create_ethernet_frame(EthernetHeader::TYPE_IPv4, payload, dst);
-  send_queue.push(frame);
+  vector<Buffer> payload = serialize( dgram );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_IPv4, payload, dst );
+  send_queue.push( frame );
 }
 
-void NetworkInterface::push_arp_request(uint32_t ipv4_numeric)
+void NetworkInterface::push_arp_request( uint32_t ipv4_numeric )
 {
   ARPMessage message;
   message.opcode = ARPMessage::OPCODE_REQUEST;
@@ -34,16 +36,19 @@ void NetworkInterface::push_arp_request(uint32_t ipv4_numeric)
   message.target_ip_address = ipv4_numeric;
 
   // maybe std::move
-  vector<Buffer> payload = serialize(message);
-  EthernetFrame frame = create_ethernet_frame(EthernetHeader::TYPE_ARP, payload, ETHERNET_BROADCAST);
+  vector<Buffer> payload = serialize( message );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, payload, ETHERNET_BROADCAST );
 
-  arp_request_expire_timers[ipv4_numeric] = timer + NetworkInterface::ARP_REQUEST_TIMEOUT_MS ;
-  send_queue.push(frame); 
+  arp_request_expire_timers[ipv4_numeric] = timer + NetworkInterface::ARP_REQUEST_TIMEOUT_MS;
+  send_queue.push( frame );
 }
 
 // replying be like the host which ARP request is searching for(meaning the result should be set to "sender" fields)
 // then, the network could cache sender fields eigher REPLY or REQUEST ARP message
-void NetworkInterface::push_arp_reply(uint32_t sender_ipv4, const EthernetAddress& sender_ethernet, uint32_t target_ipv4, const EthernetAddress& target_ethernet)
+void NetworkInterface::push_arp_reply( uint32_t sender_ipv4,
+                                       const EthernetAddress& sender_ethernet,
+                                       uint32_t target_ipv4,
+                                       const EthernetAddress& target_ethernet )
 {
   ARPMessage message;
   message.opcode = ARPMessage::OPCODE_REPLY;
@@ -53,15 +58,16 @@ void NetworkInterface::push_arp_reply(uint32_t sender_ipv4, const EthernetAddres
   message.target_ethernet_address = target_ethernet;
 
   // maybe std::move
-  vector<Buffer> payload = serialize(message);
-  EthernetFrame frame = create_ethernet_frame(EthernetHeader::TYPE_ARP, payload, target_ethernet);
-  send_queue.push(frame); 
+  vector<Buffer> payload = serialize( message );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, payload, target_ethernet );
+  send_queue.push( frame );
 }
 
-bool NetworkInterface::is_equal(const EthernetAddress& lhs, const EthernetAddress& rhs) const
+bool NetworkInterface::is_equal( const EthernetAddress& lhs, const EthernetAddress& rhs ) const
 {
-  for ( uint64_t i = 0; i < lhs.size(); ++i)
-    if (lhs[i] != rhs[i]) return false;
+  for ( uint64_t i = 0; i < lhs.size(); ++i )
+    if ( lhs[i] != rhs[i] )
+      return false;
 
   return true;
 }
@@ -120,20 +126,16 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 {
   uint32_t ipv4_numeric = next_hop.ipv4_numeric();
 
-  if (address_cache.contains(ipv4_numeric))
-  {
-    push_datagram(dgram, address_cache[ipv4_numeric]);
-  }
-  else
-  {
-    if (!arp_request_expire_timers.contains(ipv4_numeric) || timer > arp_request_expire_timers[ipv4_numeric])
-    {
-      push_arp_request(ipv4_numeric);
+  if ( address_cache.contains( ipv4_numeric ) ) {
+    push_datagram( dgram, address_cache[ipv4_numeric] );
+  } else {
+    if ( !arp_request_expire_timers.contains( ipv4_numeric ) || timer > arp_request_expire_timers[ipv4_numeric] ) {
+      push_arp_request( ipv4_numeric );
 
-      if (!datagram_cache.contains(ipv4_numeric))
+      if ( !datagram_cache.contains( ipv4_numeric ) )
         datagram_cache[ipv4_numeric] = queue<InternetDatagram> {};
 
-      datagram_cache[ipv4_numeric].push(dgram);
+      datagram_cache[ipv4_numeric].push( dgram );
     }
   }
 }
@@ -170,39 +172,35 @@ optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& fr
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
   timer += ms_since_last_tick;
-  
+
   // expire address map cache
-  for (auto iter = address_expire_timers.begin(); iter != address_expire_timers.end();)
-  {
-    if (timer < iter->second)
-    {
+  for ( auto iter = address_expire_timers.begin(); iter != address_expire_timers.end(); ) {
+    if ( timer < iter->second ) {
       ++iter;
       continue;
     }
 
-    address_cache.erase(iter->first);
-    iter = address_expire_timers.erase(iter);
+    address_cache.erase( iter->first );
+    iter = address_expire_timers.erase( iter );
   }
 
   // expire ARP requests
-  for (auto iter = arp_request_expire_timers.begin(); iter != arp_request_expire_timers.end();)
-  {
-    if (timer < iter->second)
-    {
+  for ( auto iter = arp_request_expire_timers.begin(); iter != arp_request_expire_timers.end(); ) {
+    if ( timer < iter->second ) {
       ++iter;
       continue;
     }
 
-    iter = arp_request_expire_timers.erase(iter);
+    iter = arp_request_expire_timers.erase( iter );
   }
 }
 
 optional<EthernetFrame> NetworkInterface::maybe_send()
 {
-  if (send_queue.empty())
+  if ( send_queue.empty() )
     return {};
 
-  EthernetFrame frame(std::move(send_queue.front()));
+  EthernetFrame frame( std::move( send_queue.front() ) );
   send_queue.pop();
 
   return frame;

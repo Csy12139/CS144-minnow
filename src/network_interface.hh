@@ -5,12 +5,12 @@
 #include "ipv4_datagram.hh"
 
 #include <iostream>
-#include <queue>
-#include <vector>
-#include <optional>
 #include <map>
+#include <optional>
+#include <queue>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 // A "network interface" that connects IP (the internet layer, or network layer)
 // with Ethernet (the network access layer, or link layer).
@@ -66,20 +66,25 @@ private:
 
 private:
   // internal helper to create a ethernet frame
-  EthernetFrame create_ethernet_frame(uint16_t type, std::vector<Buffer> payload, const EthernetAddress& dst) const;
+  EthernetFrame create_ethernet_frame( uint16_t type,
+                                       std::vector<Buffer> payload,
+                                       const EthernetAddress& dst ) const;
 
   // internal helper to contrast EthernetAddress
-  bool is_equal(const EthernetAddress& lhs, const EthernetAddress& rhs) const;
+  bool is_equal( const EthernetAddress& lhs, const EthernetAddress& rhs ) const;
 
   // push Internet datagram to the send queue
-  void push_datagram(const InternetDatagram& dgram, const EthernetAddress& dst);
+  void push_datagram( const InternetDatagram& dgram, const EthernetAddress& dst );
 
   // push ARP message to the send queue
-  void push_arp_request(uint32_t ipv4_numeric);
-  void push_arp_reply(uint32_t sender_ipv4, const EthernetAddress& sender_ethernet, uint32_t target_ipv4, const EthernetAddress& target_ethernet);
+  void push_arp_request( uint32_t ipv4_numeric );
+  void push_arp_reply( uint32_t sender_ipv4,
+                       const EthernetAddress& sender_ethernet,
+                       uint32_t target_ipv4,
+                       const EthernetAddress& target_ethernet );
 
   // handlers
-  void handle_arp_reply(const EthernetFrame& frame);
+  void handle_arp_reply( const EthernetFrame& frame );
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
