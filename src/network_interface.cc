@@ -10,7 +10,7 @@ EthernetFrame NetworkInterface::create_ethernet_frame( uint16_t type,
                                                        const EthernetAddress& dst ) const
 {
   EthernetFrame frame;
-  frame.payload = std::move(payload);
+  frame.payload = std::move( payload );
   frame.header.type = type;
   frame.header.dst = dst;
   frame.header.src = ethernet_address_;
@@ -21,7 +21,7 @@ EthernetFrame NetworkInterface::create_ethernet_frame( uint16_t type,
 void NetworkInterface::push_datagram( const InternetDatagram& dgram, const EthernetAddress& dst )
 {
   vector<Buffer> payload = serialize( dgram );
-  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_IPv4, std::move(payload), dst );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_IPv4, std::move( payload ), dst );
   send_queue.push( frame );
 }
 
@@ -34,29 +34,27 @@ void NetworkInterface::push_arp_request( uint32_t ipv4_numeric )
   message.target_ip_address = ipv4_numeric;
 
   vector<Buffer> payload = serialize( message );
-  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, std::move(payload), ETHERNET_BROADCAST );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, std::move( payload ), ETHERNET_BROADCAST );
 
   arp_request_expire_timers[ipv4_numeric] = timer + NetworkInterface::ARP_REQUEST_TIMEOUT_MS;
-  send_queue.push( std::move(frame) );
+  send_queue.push( std::move( frame ) );
 }
 
 // replying be like the host which ARP request is searching for(meaning the result should be set to "sender" fields)
 // then, the network could cache sender fields eigher REPLY or REQUEST ARP message
-void NetworkInterface::push_arp_reply( uint32_t sender_ipv4,
-                                       const EthernetAddress& sender_ethernet,
-                                       uint32_t target_ipv4,
-                                       const EthernetAddress& target_ethernet )
+void NetworkInterface::push_arp_reply( uint32_t sender_ipv4, uint32_t target_ipv4 )
 {
   ARPMessage message;
   message.opcode = ARPMessage::OPCODE_REPLY;
   message.sender_ip_address = sender_ipv4;
-  message.sender_ethernet_address = sender_ethernet;
+  message.sender_ethernet_address = address_map[sender_ipv4].ethernet_address;
   message.target_ip_address = target_ipv4;
-  message.target_ethernet_address = target_ethernet;
+  message.target_ethernet_address = address_map[target_ipv4].ethernet_address;
 
   vector<Buffer> payload = serialize( message );
-  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, std::move(payload), target_ethernet );
-  send_queue.push( std::move(frame) );
+  EthernetFrame frame = create_ethernet_frame(
+    EthernetHeader::TYPE_ARP, std::move( payload ), address_map[target_ipv4].ethernet_address );
+  send_queue.push( std::move( frame ) );
 }
 
 bool NetworkInterface::is_equal( const EthernetAddress& lhs, const EthernetAddress& rhs ) const
@@ -68,7 +66,7 @@ bool NetworkInterface::is_equal( const EthernetAddress& lhs, const EthernetAddre
   return true;
 }
 
-void NetworkInterface::handle_arp_reply( const EthernetFrame& frame )
+void NetworkInterface::handle_arp( const EthernetFrame& frame )
 {
   ARPMessage message;
 
@@ -79,27 +77,21 @@ void NetworkInterface::handle_arp_reply( const EthernetFrame& frame )
   uint32_t sedner_ipv4 = message.sender_ip_address;
   const EthernetAddress& sender_ethernet = message.sender_ethernet_address;
 
-  address_map[sedner_ipv4] = AddressCache(sender_ethernet, timer + ADDRESS_CACHE_TIMEOUT_MS);
+  address_map[sedner_ipv4] = AddressCache( sender_ethernet, timer + ADDRESS_CACHE_TIMEOUT_MS );
 
   if ( datagram_cache.contains( sedner_ipv4 ) ) {
     queue<InternetDatagram>& cache_queue = datagram_cache[sedner_ipv4];
 
     while ( !cache_queue.empty() ) {
-      push_datagram( std::move(cache_queue.front()), sender_ethernet );
+      push_datagram( std::move( cache_queue.front() ), sender_ethernet );
       cache_queue.pop();
     }
 
     datagram_cache.erase( sedner_ipv4 );
   }
 
-  if ( message.opcode == ARPMessage::OPCODE_REQUEST ) {
-    uint32_t target_ipv4 = message.target_ip_address;
-
-    if ( address_map.contains( target_ipv4 ) )
-      push_arp_reply( target_ipv4, address_map[target_ipv4].ethernet_address, sedner_ipv4, sender_ethernet );
-    else if ( target_ipv4 == ip_address_.ipv4_numeric() )
-      push_arp_reply( target_ipv4, ethernet_address_, sedner_ipv4, sender_ethernet );
-  }
+  if ( message.opcode == ARPMessage::OPCODE_REQUEST && address_map.contains( message.target_ip_address ) )
+    push_arp_reply( message.target_ip_address, sedner_ipv4 );
 }
 
 // ethernet_address: Ethernet (what ARP calls "hardware") address of the interface
@@ -109,6 +101,9 @@ NetworkInterface::NetworkInterface( const EthernetAddress& ethernet_address, con
 {
   cerr << "DEBUG: Network interface has Ethernet address " << to_string( ethernet_address_ ) << " and IP address "
        << ip_address.ip() << "\n";
+
+  // add local address to the map
+  address_map[ip_address_.ipv4_numeric()] = AddressCache( ethernet_address_, UINT64_MAX );
 }
 
 // dgram: the IPv4 datagram to be sent
@@ -148,12 +143,11 @@ optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& fr
 
       if ( parse( dgram, frame.payload ) )
         return dgram;
-      else
-        return {};
+
     } break;
 
     case EthernetHeader::TYPE_ARP: {
-      handle_arp_reply( frame );
+      handle_arp( frame );
     } break;
 
     default:
@@ -178,14 +172,19 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
     iter = address_map.erase( iter );
   }
 
-  // expire ARP requests
-  for ( auto iter = arp_request_expire_timers.begin(); iter != arp_request_expire_timers.end(); ) {
-    if ( timer < iter->second ) {
-      ++iter;
-      continue;
-    }
+  arp_timer += ms_since_last_tick;
 
-    iter = arp_request_expire_timers.erase( iter );
+  if ( arp_timer >= ARP_REQUEST_TIMEOUT_MS ) {
+    arp_timer = 0;
+
+    for ( auto iter = arp_request_expire_timers.begin(); iter != arp_request_expire_timers.end(); ) {
+      if ( timer < iter->second ) {
+        ++iter;
+        continue;
+      }
+
+      iter = arp_request_expire_timers.erase( iter );
+    }
   }
 }
 

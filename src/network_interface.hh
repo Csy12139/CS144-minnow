@@ -57,6 +57,9 @@ private:
   // total number of milliseconds the NetworkInterface has been alive
   uint64_t timer {};
 
+  // a timer for clean up expire arp requests
+  uint64_t arp_timer {};
+
   // ip_address(numeric) -> ethernet_address
   std::unordered_map<uint32_t, AddressCache> address_map {};
 
@@ -83,13 +86,10 @@ private:
 
   // push ARP message to the send queue
   void push_arp_request( uint32_t ipv4_numeric );
-  void push_arp_reply( uint32_t sender_ipv4,
-                       const EthernetAddress& sender_ethernet,
-                       uint32_t target_ipv4,
-                       const EthernetAddress& target_ethernet );
+  void push_arp_reply( uint32_t sender_ipv4, uint32_t target_ipv4 );
 
   // handlers
-  void handle_arp_reply( const EthernetFrame& frame );
+  void handle_arp( const EthernetFrame& frame );
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
