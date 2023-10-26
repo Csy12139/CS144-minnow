@@ -5,6 +5,7 @@
 #include "ipv4_datagram.hh"
 
 #include <iostream>
+#include <queue>
 #include <optional>
 #include <map>
 #include <unordered_map>
@@ -55,6 +56,9 @@ private:
 
   // ip_address(numeric) -> expire_time
   std::unordered_map<uint32_t, uint64_t> arp_request_expire_timers {};
+
+  // send queue for EthernetFrame
+  std::queue<EthernetFrame> send_queue {};
 
 private:
 
