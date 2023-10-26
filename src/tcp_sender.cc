@@ -97,7 +97,7 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 void TCPSender::push( Reader& outbound_stream )
 {
   if ( !m_syc_pushed ) {
-    m_fin_pushed = outbound_stream.bytes_buffered() == 0 && outbound_stream.is_finished();
+    m_fin_pushed = outbound_stream.is_finished();
     m_syc_pushed = true;
     push_message( {}, m_syc_pushed, m_fin_pushed );
   }
@@ -111,7 +111,7 @@ void TCPSender::push( Reader& outbound_stream )
 
   while (!m_fin_pushed && get_absolute_seqno() + TCPConfig::MAX_PAYLOAD_SIZE <= window_right) {
     read( outbound_stream, TCPConfig::MAX_PAYLOAD_SIZE, payload );
-    bool is_fin_msg = payload.size() + get_absolute_seqno() < window_right && outbound_stream.bytes_buffered() == 0 && outbound_stream.is_finished();
+    bool is_fin_msg = payload.size() + get_absolute_seqno() < window_right && outbound_stream.is_finished();
 
     if (payload.empty() && !is_fin_msg)
       break;
@@ -122,7 +122,7 @@ void TCPSender::push( Reader& outbound_stream )
 
   if ( !m_fin_pushed && get_absolute_seqno() < window_right ) {
     read( outbound_stream, window_right - get_absolute_seqno(), payload );
-    bool is_fin_msg = payload.size() + get_absolute_seqno() < window_right && outbound_stream.bytes_buffered() == 0 && outbound_stream.is_finished();
+    bool is_fin_msg = payload.size() + get_absolute_seqno() < window_right && outbound_stream.is_finished();
 
     if (!payload.empty() || is_fin_msg)
     {
