@@ -4,9 +4,6 @@
 #include "ethernet_frame.hh"
 
 using namespace std;
-  
-uint32_t NetworkInterface::ADDRESS_CACHE_TIMEOUT_MS = 30000;
-uint32_t NetworkInterface::ARP_REQUEST_TIMEOUT_MS = 5000;
 
 EthernetFrame NetworkInterface::create_ethernet_frame(uint16_t type, std::vector<Buffer> payload, const EthernetAddress& dst) const
 {

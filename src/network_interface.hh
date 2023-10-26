@@ -43,8 +43,8 @@ private:
   Address ip_address_;
 
   // TIMEOUT CONFIG
-  static uint32_t ADDRESS_CACHE_TIMEOUT_MS;
-  static uint32_t ARP_REQUEST_TIMEOUT_MS;
+  static constexpr uint32_t ADDRESS_CACHE_TIMEOUT_MS = 30000;
+  static constexpr uint32_t ARP_REQUEST_TIMEOUT_MS = 5000;
 
   // total number of milliseconds the NetworkInterface has been alive
   uint64_t timer {};
