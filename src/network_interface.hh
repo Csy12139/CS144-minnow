@@ -36,6 +36,14 @@
 class NetworkInterface
 {
 private:
+  struct AddressCache
+  {
+    EthernetAddress ethernet_address {};
+    uint64_t expire_time_ms {};
+    AddressCache() = default;
+    AddressCache(const EthernetAddress& ethernet_addr, uint64_t time_ms): ethernet_address(ethernet_addr), expire_time_ms(time_ms) {}
+  };
+
   // Ethernet (known as hardware, network-access, or link-layer) address of the interface
   EthernetAddress ethernet_address_;
 
@@ -50,10 +58,7 @@ private:
   uint64_t timer {};
 
   // ip_address(numeric) -> ethernet_address
-  std::unordered_map<uint32_t, EthernetAddress> address_cache {};
-
-  // expire_time -> ip_address(numeric)
-  std::map<uint32_t, uint64_t> address_expire_timers {};
+  std::unordered_map<uint32_t, AddressCache> address_map {};
 
   // ip_address(numeric) -> expire_time
   std::unordered_map<uint32_t, uint64_t> arp_request_expire_timers {};

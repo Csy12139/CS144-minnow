@@ -77,10 +77,9 @@ void NetworkInterface::handle_arp_reply( const EthernetFrame& frame )
 
   // cache address either REPLY or REQUEST ARP message
   uint32_t sedner_ipv4 = message.sender_ip_address;
-  EthernetAddress& sender_ethernet = message.sender_ethernet_address;
+  const EthernetAddress& sender_ethernet = message.sender_ethernet_address;
 
-  address_expire_timers[sedner_ipv4] = timer + NetworkInterface::ADDRESS_CACHE_TIMEOUT_MS;
-  address_cache[sedner_ipv4] = sender_ethernet;
+  address_map[sedner_ipv4] = AddressCache(sender_ethernet, timer + ADDRESS_CACHE_TIMEOUT_MS);
 
   if ( datagram_cache.contains( sedner_ipv4 ) ) {
     queue<InternetDatagram>& cache_queue = datagram_cache[sedner_ipv4];
@@ -96,8 +95,8 @@ void NetworkInterface::handle_arp_reply( const EthernetFrame& frame )
   if ( message.opcode == ARPMessage::OPCODE_REQUEST ) {
     uint32_t target_ipv4 = message.target_ip_address;
 
-    if ( address_cache.contains( target_ipv4 ) )
-      push_arp_reply( target_ipv4, address_cache[target_ipv4], sedner_ipv4, sender_ethernet );
+    if ( address_map.contains( target_ipv4 ) )
+      push_arp_reply( target_ipv4, address_map[target_ipv4].ethernet_address, sedner_ipv4, sender_ethernet );
     else if ( target_ipv4 == ip_address_.ipv4_numeric() )
       push_arp_reply( target_ipv4, ethernet_address_, sedner_ipv4, sender_ethernet );
   }
@@ -122,8 +121,8 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 {
   uint32_t ipv4_numeric = next_hop.ipv4_numeric();
 
-  if ( address_cache.contains( ipv4_numeric ) ) {
-    push_datagram( dgram, address_cache[ipv4_numeric] );
+  if ( address_map.contains( ipv4_numeric ) ) {
+    push_datagram( dgram, address_map[ipv4_numeric].ethernet_address );
   } else {
     if ( !arp_request_expire_timers.contains( ipv4_numeric ) || timer > arp_request_expire_timers[ipv4_numeric] ) {
       push_arp_request( ipv4_numeric );
@@ -170,14 +169,13 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
   timer += ms_since_last_tick;
 
   // expire address map cache
-  for ( auto iter = address_expire_timers.begin(); iter != address_expire_timers.end(); ) {
-    if ( timer < iter->second ) {
+  for ( auto iter = address_map.begin(); iter != address_map.end(); ) {
+    if ( timer < iter->second.expire_time_ms ) {
       ++iter;
       continue;
     }
 
-    address_cache.erase( iter->first );
-    iter = address_expire_timers.erase( iter );
+    iter = address_map.erase( iter );
   }
 
   // expire ARP requests
