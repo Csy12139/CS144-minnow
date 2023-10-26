@@ -90,7 +90,7 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
   timer += ms_since_last_tick;
   
   // expire address map cache
-  while (timer >= address_expire_timers.begin()->first)
+  while (!address_expire_timers.empty() && timer >= address_expire_timers.begin()->first)
   {
     auto iter = address_cache.find(address_expire_timers.begin()->second);
 
