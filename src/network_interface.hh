@@ -5,9 +5,8 @@
 #include "ipv4_datagram.hh"
 
 #include <iostream>
-#include <list>
 #include <optional>
-#include <queue>
+#include <map>
 #include <unordered_map>
 #include <utility>
 
@@ -40,6 +39,25 @@ private:
 
   // IP (known as Internet-layer or network-layer) address of the interface
   Address ip_address_;
+
+  // TIMEOUT CONFIG
+  static uint32_t ADDRESS_CACHE_TIMEOUT_MS;
+  static uint32_t ARP_REQUEST_TIMEOUT_MS;
+
+  // total number of milliseconds the NetworkInterface has been alive
+  uint64_t timer {};
+
+  // ip_address(numeric) -> ethernet_address
+  std::unordered_map<uint32_t, EthernetAddress> address_cache {};
+
+  // expire_time -> ip_address(numeric)
+  std::map<uint64_t, uint32_t> address_expire_timers {};
+
+  // ip_address(numeric) -> expire_time
+  std::unordered_map<uint32_t, uint64_t> arp_request_expire_timers {};
+
+private:
+
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)

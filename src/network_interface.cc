@@ -4,6 +4,10 @@
 #include "ethernet_frame.hh"
 
 using namespace std;
+  
+// TIMEOUT CONFIG
+static uint32_t ADDRESS_CACHE_TIMEOUT_MS = 30000;
+static uint32_t ARP_REQUEST_TIMEOUT_MS = 5000;
 
 // ethernet_address: Ethernet (what ARP calls "hardware") address of the interface
 // ip_address: IP (what ARP calls "protocol") address of the interface
