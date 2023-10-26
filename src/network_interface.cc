@@ -6,8 +6,8 @@
 using namespace std;
   
 // TIMEOUT CONFIG
-static uint32_t ADDRESS_CACHE_TIMEOUT_MS = 30000;
-static uint32_t ARP_REQUEST_TIMEOUT_MS = 5000;
+uint32_t NetworkInterface::ADDRESS_CACHE_TIMEOUT_MS = 30000;
+uint32_t NetworkInterface::ARP_REQUEST_TIMEOUT_MS = 5000;
 
 // ethernet_address: Ethernet (what ARP calls "hardware") address of the interface
 // ip_address: IP (what ARP calls "protocol") address of the interface
@@ -40,7 +40,27 @@ optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& fr
 // ms_since_last_tick: the number of milliseconds since the last call to this method
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
-  (void)ms_since_last_tick;
+  timer += ms_since_last_tick;
+  
+  // expire address map cache
+  while (timer >= address_expire_timers.begin()->first)
+  {
+    auto iter = address_cache.find(address_expire_timers.begin()->second);
+
+    if (iter != address_cache.end())
+      address_cache.erase(iter);
+
+    address_expire_timers.erase(address_expire_timers.begin());
+  }
+
+  // expire ARP requests
+  for (auto iter = arp_request_expire_timers.begin(); iter != arp_request_expire_timers.end();)
+  {
+    if (timer >= iter->second)
+      iter = arp_request_expire_timers.erase(iter);
+    else
+      ++iter;
+  }
 }
 
 optional<EthernetFrame> NetworkInterface::maybe_send()
