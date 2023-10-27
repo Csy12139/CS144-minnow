@@ -5,18 +5,18 @@
 
 using namespace std;
 
-bool Router::RouteTable::match( uint32_t ipv4_address, uint64_t concat )
+bool Router::RouteTable::match( const uint32_t ipv4_address, const uint64_t concat )
 {
-  uint64_t route_prefix = concat >> 32;
+  const uint64_t route_prefix = concat >> 32;
 
   // This ensure the safety to shift 64-bit uint of any valid (up to 32) prefix_length
-  uint64_t prefix_length = concat & 0x3F;
-  uint64_t route_prefix_mask = 0xFFFFFFFF - ( ( (uint64_t)1 << ( 32 - prefix_length ) ) - 1 );
+  const uint64_t prefix_length = concat & 0x3F;
+  const uint64_t route_prefix_mask = 0xFFFFFFFF - ( ( (uint64_t)1 << ( 32 - prefix_length ) ) - 1 );
 
   return ( route_prefix & route_prefix_mask ) == ( ipv4_address & route_prefix_mask );
 }
 
-void Router::RouteTable::insert( uint64_t concat, size_t num, const optional<Address>& next_hop )
+void Router::RouteTable::insert( const uint64_t concat, const size_t num, const optional<Address>& next_hop )
 {
   entries[concat] = num;
 
@@ -35,7 +35,7 @@ bool Router::RouteTable::look_up( const uint32_t ipv4_address, size_t& interface
   size_t num = 0;
   bool matched = false;
 
-  for ( auto pair : entries ) {
+  for ( const auto pair : entries ) {
     if ( match( ipv4_address, pair.first ) && ( pair.first & prefix_length_mask ) >= longest_prefix_length ) {
       matched = true;
 
@@ -56,7 +56,7 @@ bool Router::RouteTable::look_up( const uint32_t ipv4_address, size_t& interface
 }
 
 
-void Router::route_datagram(InternetDatagram& dgram)
+void Router::route_datagram(InternetDatagram dgram)
 {
   if (dgram.header.ttl == 1 || dgram.header.ttl == 0)
   {
@@ -78,10 +78,9 @@ void Router::route_datagram(InternetDatagram& dgram)
     next_hop = dgram.header.dst;
   }
 
-  dgram.header.compute_checksum();
-
   auto& interface = interfaces_[interface_num];
-
+  
+  dgram.header.compute_checksum();
   interface.send_datagram(dgram, Address::from_ipv4_numeric(next_hop.value()));
 }
 
@@ -100,7 +99,7 @@ void Router::add_route( const uint32_t route_prefix,
        << static_cast<int>( prefix_length ) << " => " << ( next_hop.has_value() ? next_hop->ip() : "(direct)" )
        << " on interface " << interface_num << "\n";
 
-  uint64_t concat = ( static_cast<uint64_t>( route_prefix ) << 32 ) + static_cast<uint64_t>( prefix_length );
+  const uint64_t concat = ( static_cast<uint64_t>( route_prefix ) << 32 ) + static_cast<uint64_t>( prefix_length );
   rout_table_.insert(concat, interface_num, next_hop);
 }
 
@@ -116,7 +115,7 @@ void Router::route() {
         break;
       }
 
-      route_datagram(dgram.value());
+      route_datagram(std::move(dgram.value()));
     }
   }
 }

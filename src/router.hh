@@ -61,10 +61,10 @@ class Router
     std::unordered_map<uint64_t, size_t> entries {};
     std::unordered_map<uint64_t, uint32_t> next_hops {};
 
-    static bool match( uint32_t ipv4_address, uint64_t concat );
+    static bool match( const uint32_t ipv4_address, const uint64_t concat );
 
   public:
-    void insert(uint64_t concat, size_t num, const std::optional<Address>& next_hop);
+    void insert(const uint64_t concat, const size_t num, const std::optional<Address>& next_hop);
     // look up the longest-prefix-match interface num. output by param interface_num if return true 
     bool look_up( const uint32_t ipv4_address, size_t& interface_num, std::optional<uint32_t>& next_hop) const;
   };
@@ -75,7 +75,7 @@ class Router
   // Route table
   RouteTable rout_table_ {};
 
-  void route_datagram(InternetDatagram& dgram);
+  void route_datagram(InternetDatagram dgram);
 public:
   // Add an interface to the router
   // interface: an already-constructed network interface
