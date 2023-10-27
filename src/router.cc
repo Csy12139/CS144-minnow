@@ -7,25 +7,22 @@ using namespace std;
 
 bool Router::RouteTable::match( const uint32_t ipv4_address, const uint64_t concat )
 {
-  const uint64_t route_prefix = concat >> 32;
-
   // This ensure the safety to shift 64-bit uint of any valid (up to 32) prefix_length
   const uint64_t prefix_length = concat & 0x3F;
   const uint64_t route_prefix_mask = 0xFFFFFFFF - ( ( (uint64_t)1 << ( 32 - prefix_length ) ) - 1 );
 
-  return ( route_prefix & route_prefix_mask ) == ( ipv4_address & route_prefix_mask );
+  return ( (concat >> 32) & route_prefix_mask ) == ( ipv4_address & route_prefix_mask );
 }
 
 void Router::RouteTable::insert( const uint64_t concat, const size_t num, const optional<Address>& next_hop )
 {
   entries[concat] = num;
 
-  if ( next_hop.has_value() ) {
+  if ( next_hop.has_value() )
     next_hops[concat] = next_hop.value().ipv4_numeric();
-  }
 }
 
-bool Router::RouteTable::look_up( const uint32_t ipv4_address, size_t& interface_num, optional<uint32_t>& next_hop) const
+bool Router::RouteTable::look_up( const uint32_t ipv4_address, size_t& interface_num, optional<uint32_t>& next_hop ) const
 {
   next_hop.reset();
   const uint64_t prefix_length_mask = 0xFFFFFFFF;
@@ -44,44 +41,35 @@ bool Router::RouteTable::look_up( const uint32_t ipv4_address, size_t& interface
       concat = pair.first;
     }
   }
-  
+
   interface_num = matched ? num : interface_num;
 
-  if (matched && next_hops.contains(concat))
-  {
-    next_hop = next_hops.find(concat)->second;
-  }
+  if ( matched && next_hops.contains( concat ) )
+    next_hop = next_hops.find( concat )->second;
 
   return matched;
 }
 
-
-void Router::route_datagram(InternetDatagram dgram)
+void Router::route_datagram( InternetDatagram dgram )
 {
-  if (dgram.header.ttl == 1 || dgram.header.ttl == 0)
-  {
+  if ( dgram.header.ttl == 1 || dgram.header.ttl == 0 )
     return;
-  }
 
   --dgram.header.ttl;
 
   size_t interface_num = 0;
   optional<uint32_t> next_hop;
 
-  if (!rout_table_.look_up(dgram.header.dst, interface_num, next_hop))
-  {
+  if ( !route_table_.look_up( dgram.header.dst, interface_num, next_hop ) )
     return;
-  }
 
-  if (!next_hop.has_value())
-  {
+  if ( !next_hop.has_value() )
     next_hop = dgram.header.dst;
-  }
 
   auto& interface = interfaces_[interface_num];
-  
+
   dgram.header.compute_checksum();
-  interface.send_datagram(dgram, Address::from_ipv4_numeric(next_hop.value()));
+  interface.send_datagram( dgram, Address::from_ipv4_numeric( next_hop.value() ) );
 }
 
 // route_prefix: The "up-to-32-bit" IPv4 address prefix to match the datagram's destination address against
@@ -95,27 +83,20 @@ void Router::add_route( const uint32_t route_prefix,
                         const optional<Address> next_hop,
                         const size_t interface_num )
 {
-  cerr << "DEBUG: adding route " << Address::from_ipv4_numeric( route_prefix ).ip() << "/"
-       << static_cast<int>( prefix_length ) << " => " << ( next_hop.has_value() ? next_hop->ip() : "(direct)" )
-       << " on interface " << interface_num << "\n";
-
   const uint64_t concat = ( static_cast<uint64_t>( route_prefix ) << 32 ) + static_cast<uint64_t>( prefix_length );
-  rout_table_.insert(concat, interface_num, next_hop);
+  route_table_.insert( concat, interface_num, next_hop );
 }
 
-void Router::route() {
-  for (auto& interface : interfaces_)
-  {
-    while (true)
-    {
+void Router::route()
+{
+  for ( auto& interface : interfaces_ ) {
+    while ( true ) {
       auto dgram = interface.maybe_receive();
 
-      if (!dgram.has_value())
-      {
+      if ( !dgram.has_value() )
         break;
-      }
 
-      route_datagram(std::move(dgram.value()));
+      route_datagram( std::move( dgram.value() ) );
     }
   }
 }
