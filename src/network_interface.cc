@@ -25,36 +25,39 @@ void NetworkInterface::push_datagram( const InternetDatagram& dgram, const Ether
   send_queue.push( frame );
 }
 
-void NetworkInterface::push_arp_request( uint32_t ipv4_numeric )
+void NetworkInterface::push_arp( const uint16_t type,
+                                 const uint32_t sender_ip,
+                                 const uint32_t target_ip,
+                                 const EthernetAddress dst )
 {
   ARPMessage message;
-  message.opcode = ARPMessage::OPCODE_REQUEST;
-  message.sender_ethernet_address = ethernet_address_;
-  message.sender_ip_address = ip_address_.ipv4_numeric();
-  message.target_ip_address = ipv4_numeric;
+  message.opcode = type;
+  message.sender_ip_address = sender_ip;
+  message.target_ip_address = target_ip;
+  
+  if ( address_map.contains(sender_ip))
+    message.sender_ethernet_address = address_map[sender_ip].ethernet_address;
+
+  if ( address_map.contains( target_ip ) )
+    message.target_ethernet_address = address_map[target_ip].ethernet_address;
 
   vector<Buffer> payload = serialize( message );
-  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, std::move( payload ), ETHERNET_BROADCAST );
+  EthernetFrame frame = create_ethernet_frame( EthernetHeader::TYPE_ARP, std::move( payload ), dst );
 
-  arp_request_expire_timers[ipv4_numeric] = timer + NetworkInterface::ARP_REQUEST_TIMEOUT_MS;
   send_queue.push( std::move( frame ) );
+}
+
+void NetworkInterface::push_arp_request( uint32_t ipv4_numeric )
+{
+  push_arp( ARPMessage::OPCODE_REQUEST, ip_address_.ipv4_numeric(), ipv4_numeric, ETHERNET_BROADCAST );
+  arp_request_expire_timers[ipv4_numeric] = timer + NetworkInterface::ARP_REQUEST_TIMEOUT_MS;
 }
 
 // replying be like the host which ARP request is searching for(meaning the result should be set to "sender" fields)
 // then, the network could cache sender fields eigher REPLY or REQUEST ARP message
 void NetworkInterface::push_arp_reply( uint32_t sender_ipv4, uint32_t target_ipv4 )
 {
-  ARPMessage message;
-  message.opcode = ARPMessage::OPCODE_REPLY;
-  message.sender_ip_address = sender_ipv4;
-  message.sender_ethernet_address = address_map[sender_ipv4].ethernet_address;
-  message.target_ip_address = target_ipv4;
-  message.target_ethernet_address = address_map[target_ipv4].ethernet_address;
-
-  vector<Buffer> payload = serialize( message );
-  EthernetFrame frame = create_ethernet_frame(
-    EthernetHeader::TYPE_ARP, std::move( payload ), address_map[target_ipv4].ethernet_address );
-  send_queue.push( std::move( frame ) );
+  push_arp( ARPMessage::OPCODE_REPLY, sender_ipv4, target_ipv4, address_map[target_ipv4].ethernet_address );
 }
 
 bool NetworkInterface::is_equal( const EthernetAddress& lhs, const EthernetAddress& rhs ) const

@@ -87,6 +87,10 @@ private:
   void push_datagram( const InternetDatagram& dgram, const EthernetAddress& dst );
 
   // push ARP message to the send queue
+  void push_arp( const uint16_t type,
+                 const uint32_t sender_ip,
+                 const uint32_t target_ip,
+                 const EthernetAddress dst );
   void push_arp_request( uint32_t ipv4_numeric );
   void push_arp_reply( uint32_t sender_ipv4, uint32_t target_ipv4 );
 
