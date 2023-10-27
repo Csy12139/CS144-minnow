@@ -66,7 +66,7 @@ class Router
   public:
     void insert(uint64_t concat, size_t num, const std::optional<Address>& next_hop);
     // look up the longest-prefix-match interface num. output by param interface_num if return true 
-    bool look_up( uint32_t ipv4_address, size_t& interface_num ) const;
+    bool look_up( const uint32_t ipv4_address, size_t& interface_num, std::optional<uint32_t>& next_hop) const;
   };
 
   // The router's collection of network interfaces
@@ -75,6 +75,7 @@ class Router
   // Route table
   RouteTable rout_table_ {};
 
+  void route_datagram(InternetDatagram& dgram);
 public:
   // Add an interface to the router
   // interface: an already-constructed network interface
