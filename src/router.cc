@@ -9,8 +9,7 @@ bool Router::RouteTable::match( uint32_t ipv4_address, uint64_t concat )
 {
   uint64_t route_prefix = concat >> 32;
 
-  // a correct prefix_length must be <= 32. This ensure it's safe to shift 64-bit uint of any valid prefix_length
-  // bits
+  // This ensure the safety to shift 64-bit uint of any valid (up to 32) prefix_length
   uint64_t prefix_length = concat & 0x3F;
   uint64_t route_prefix_mask = 0xFFFFFFFF - ( ( (uint64_t)1 << ( 32 - prefix_length ) ) - 1 );
 
@@ -31,17 +30,19 @@ bool Router::RouteTable::look_up( uint32_t ipv4_address, size_t& interface_num )
   uint8_t longest_prefix_length = 0;
   size_t num = 0;
   uint64_t prefix_length_mask = 0xFFFFFFFF;
+  bool matched = false;
 
   for ( auto pair : entries ) {
-    if ( match( ipv4_address, pair.first ) && ( pair.first & prefix_length_mask ) > longest_prefix_length ) {
+    if ( match( ipv4_address, pair.first ) && ( pair.first & prefix_length_mask ) >= longest_prefix_length ) {
       num = pair.second;
       longest_prefix_length = pair.first & prefix_length_mask;
+      matched = true;
     }
   }
 
-  interface_num = longest_prefix_length > 0 ? num : interface_num;
+  interface_num = matched ? num : interface_num;
 
-  return longest_prefix_length > 0;
+  return matched;
 }
 
 // route_prefix: The "up-to-32-bit" IPv4 address prefix to match the datagram's destination address against
@@ -64,5 +65,5 @@ void Router::add_route( const uint32_t route_prefix,
 }
 
 void Router::route() {
-
+  
 }
