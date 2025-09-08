@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdexcept>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -9,35 +9,6 @@ class Writer;
 
 class ByteStream
 {
-private:
-  class RingBuffer
-  {
-  protected:
-    std::string m_data {};
-    uint64_t m_capacity {};
-    uint64_t m_begin {};
-    uint64_t m_end {};
-    uint64_t m_size {};
-
-  public:
-    explicit RingBuffer( uint64_t capacity );
-    uint64_t size() const;
-    uint64_t bytes_pushed() const;
-    void push( const std::string& data, uint64_t count );
-    void pop( uint64_t len );
-    const char* data() const;
-  };
-
-protected:
-  uint64_t m_capacity = 0;
-  RingBuffer m_buf;
-  uint64_t m_bytes_popped = 0;
-  uint64_t m_bytes_pushed = 0;
-
-  bool m_closed = false;
-  bool m_error = false;
-  // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
-
 public:
   explicit ByteStream( uint64_t capacity );
 
@@ -46,15 +17,25 @@ public:
   const Reader& reader() const;
   Writer& writer();
   const Writer& writer() const;
+
+  void set_error() { error_ = true; };       // Signal that the stream suffered an error.
+  bool has_error() const { return error_; }; // Has the stream had an error?
+
+protected:
+  // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
+  std::string buffer_; // Buffer to store the data
+  uint64_t capacity_;
+  uint64_t bytes_pushed_;
+  uint64_t bytes_popped_;
+  bool is_close_;
+  bool error_ {};
 };
 
 class Writer : public ByteStream
 {
 public:
-  void push( const std::string& data ); // Push data to stream, but only as much as available capacity allows.
-
-  void close();     // Signal that the stream has reached its ending. Nothing more will be written.
-  void set_error(); // Signal that the stream suffered an error.
+  void push( std::string data ); // Push data to stream, but only as much as available capacity allows.
+  void close();                  // Signal that the stream has reached its ending. Nothing more will be written.
 
   bool is_closed() const;              // Has the stream been closed?
   uint64_t available_capacity() const; // How many bytes can be pushed to the stream right now?
@@ -67,15 +48,13 @@ public:
   std::string_view peek() const; // Peek at the next bytes in the buffer
   void pop( uint64_t len );      // Remove `len` bytes from the buffer
 
-  bool is_finished() const; // Is the stream finished (closed and fully popped)?
-  bool has_error() const;   // Has the stream had an error?
-
+  bool is_finished() const;        // Is the stream finished (closed and fully popped)?
   uint64_t bytes_buffered() const; // Number of bytes currently buffered (pushed and not popped)
   uint64_t bytes_popped() const;   // Total number of bytes cumulatively popped from stream
 };
 
 /*
- * read: A (provided) helper function thats peeks and pops up to `len` bytes
+ * read: A (provided) helper function thats peeks and pops up to `max_len` bytes
  * from a ByteStream Reader into a string;
  */
-void read( Reader& reader, uint64_t len, std::string& out );
+void read( Reader& reader, uint64_t max_len, std::string& out );

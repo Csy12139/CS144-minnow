@@ -1,113 +1,62 @@
-#include <stdexcept>
-
 #include "byte_stream.hh"
 
 using namespace std;
 
-ByteStream::RingBuffer::RingBuffer( uint64_t capacity ) : m_capacity( capacity )
+ByteStream::ByteStream( uint64_t capacity )
+  : buffer_(), capacity_( capacity ), bytes_pushed_( 0 ), bytes_popped_( 0 ), is_close_( false ), error_( false )
+{}
+
+void Writer::push( string data )
 {
-  m_data.resize( capacity );
-}
-
-uint64_t ByteStream::RingBuffer::size() const
-{
-  return m_size;
-}
-
-uint64_t ByteStream::RingBuffer::bytes_pushed() const
-{
-  return m_size == m_capacity || m_end < m_begin ? m_capacity - m_begin : m_end - m_begin;
-}
-
-const char* ByteStream::RingBuffer::data() const
-{
-  return &m_data[m_begin];
-}
-
-void ByteStream::RingBuffer::push( const std::string& data, uint64_t count )
-{
-  uint64_t part_left = 0;
-  uint64_t part_right = 0;
-
-  part_left = m_end + count > m_capacity ? m_capacity - m_end : count;
-  part_right = m_end + count > m_capacity ? ( m_end + count ) % m_capacity : 0;
-
-  m_data.replace( m_end, part_left, data, 0, part_left );
-  m_data.replace( 0, part_right, data, part_left, part_right );
-
-  m_end = ( m_end + count ) % m_capacity;
-  m_size += count;
-}
-
-void ByteStream::RingBuffer::pop( uint64_t len )
-{
-  m_size -= len;
-  m_begin += len;
-  m_begin %= m_capacity;
-}
-
-ByteStream::ByteStream( uint64_t capacity ) : m_capacity( capacity ), m_buf( capacity ) {}
-
-void Writer::push( const string& data )
-{
-  uint64_t len = data.size() <= available_capacity() ? data.size() : available_capacity();
-  m_buf.push( data, len );
-  m_bytes_pushed += len;
+  uint64_t write_len = min( data.size(), available_capacity() );
+  Writer::buffer_ += data.substr( 0, write_len );
+  bytes_pushed_ += write_len;
 }
 
 void Writer::close()
 {
-  m_closed = true;
-}
-
-void Writer::set_error()
-{
-  m_error = true;
+  is_close_ = true;
 }
 
 bool Writer::is_closed() const
 {
-  return m_closed;
+  return is_close_;
 }
 
 uint64_t Writer::available_capacity() const
 {
-  return m_capacity - m_buf.size();
+  return capacity_ - buffer_.size();
 }
 
 uint64_t Writer::bytes_pushed() const
 {
-  return m_bytes_pushed;
+  return bytes_pushed_;
 }
 
 string_view Reader::peek() const
 {
-  return { m_buf.data(), m_buf.bytes_pushed() };
-}
-
-bool Reader::is_finished() const
-{
-  return m_closed && bytes_buffered() == 0;
-}
-
-bool Reader::has_error() const
-{
-  return m_error;
+  std::string_view sv1( buffer_ );
+  return { sv1 };
 }
 
 void Reader::pop( uint64_t len )
 {
-  len = len > bytes_buffered() ? bytes_buffered() : len;
-  m_buf.pop( len );
-  m_bytes_popped += len;
+  uint64_t pop_len = min( len, bytes_buffered() );
+  Reader::buffer_.erase( 0, pop_len );
+  bytes_popped_ += pop_len;
+}
+
+bool Reader::is_finished() const
+{
+  return is_close_ && buffer_.empty();
 }
 
 uint64_t Reader::bytes_buffered() const
 {
-  return m_buf.size();
+  return buffer_.size();
 }
 
 uint64_t Reader::bytes_popped() const
 {
-  return m_bytes_popped;
+  return bytes_popped_;
 }
